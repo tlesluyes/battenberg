@@ -5,23 +5,41 @@
 \title{Fit ChrX subclonal copy number (male only)}
 \usage{
 callChrXsubclones(
-  TUMOURNAME,
-  X_GAMMA = 1000,
-  X_KMIN = 100,
-  GENOMEBUILD,
-  AR = TRUE
+  tumourname,
+  logR_file = paste0(tumourname, "_mutantLogR_gcCorrected.tab"),
+  BAFsegmented_file = paste0(tumourname, ".BAFsegmented.txt"),
+  rhoandpsi_file = paste0(tumourname, "_rho_and_psi.txt"),
+  copynumber_file = paste0(tumourname, "_copynumber_extended.txt"),
+  X_gamma = 1000,
+  X_kmin = 100,
+  genomebuild,
+  AR = TRUE,
+  prior_breakpoints_file = NULL,
+  chrom_names
 )
 }
 \arguments{
-\item{TUMOURNAME}{The tumour name used for Battenberg (i.e. the tumour BAM file name without the .bam extension)}
+\item{tumourname}{The sample name used for Battenberg (i.e. the tumour BAM file name without the .bam extension)}
 
-\item{X_GAMMA}{The PCF gamma value for segmentation of 1000G SNP LogR values (Default 1000)}
+\item{logR_file}{The (corrected) LogR file (Default paste0(tumourname,"_mutantLogR_gcCorrected.tab"))}
 
-\item{X_KMIN}{The min number of SNPs to support a segment in PCF of LogR values (Default 100)}
+\item{BAFsegmented_file}{The BAFsegmented file (Default paste0(tumourname,".BAFsegmented.txt"))}
 
-\item{GENOMEBUILD}{The genome build used in running Battenberg (hg19 or hg38)}
+\item{rhoandpsi_file}{The rho_and_psi file (Default paste0(tumourname,"_rho_and_psi.txt"))}
+
+\item{copynumber_file}{The extended copynumber file (Default paste0(tumourname,"_copynumber_extended.txt"))}
+
+\item{X_gamma}{The PCF gamma value for segmentation of 1000G SNP LogR values (Default 1000)}
+
+\item{X_kmin}{The min number of SNPs to support a segment in PCF of LogR values (Default 100)}
+
+\item{genomebuild}{The genome build used in running Battenberg (hg19 or hg38)}
 
 \item{AR}{Should the segment carrying the androgen receptor (AR) locus to be visually distinguished in average plot? (Default TRUE)}
+
+\item{prior_breakpoints_file}{A two column text file with prior genome-wide breakpoints, possibly from structural variants. This file must contain two columns with headers "chr" and "pos" representing chromosome and position.}
+
+\item{chrom_names}{A vector containing the names of chromosomes to be included in the final genome-wide Battenberg copy number plot with chrX}
 }
 \description{
 Function to call ChrX copy number based on LogR (suitable for male samples). Copy number
@@ -29,9 +47,11 @@ cannot be called for the non-PAR region of ChrX due to the hemizygosity of all 1
 This function enables calling subclonal copy number for the non-PAR region by segmenting LogR.
 A number of correction steps are undertaken to account for the noisy nature of LogR. This function
 requires the following libraries: copynumber, data.table and ggplot2. It reads in three files generated
-by previous steps of Battenberg, namely TUMOURNAME_mutantLogR_gcCorrected.tab, TUMOURNAME_purity_ploidy.txt
-and TUMOURNAME_subclones.txt.
+by previous steps of Battenberg, namely samplename_mutantLogR_gcCorrected.tab, samplename_purity_ploidy.txt
+and samplename_copynumber_extended.txt.
+This function will also update the Battenberg genome-wide profile plots (average.png and subclones.png) to include the chrX profile by also
+reading in the samplename.BAFsegmented.txt and samplename_rho_psi.txt files
 }
 \author{
-Naser Ansari-Pour (BDI, Oxford)
+naser.ansari-pour
 }
