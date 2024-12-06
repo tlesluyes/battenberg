@@ -543,6 +543,10 @@ battenberg = function(analysis="paired", samplename, normalname, sample_data_fil
     if (ismale & "X" %in% chrom_names){
       print("callChrXsubclones")
       callChrXsubclones(tumourname=samplename[sampleidx],
+                        logR_file=logr_file,
+                        BAFsegmented_file=paste(samplename[sampleidx], ".BAFsegmented.txt", sep=""),
+                        rhoandpsi_file=paste(samplename[sampleidx], "_rho_and_psi.txt", sep=""),
+                        copynumber_file=paste(samplename[sampleidx], "_copynumber_extended.txt", sep=""),
                         X_gamma=1000,
                         X_kmin=100,
                         genomebuild=genomebuild,

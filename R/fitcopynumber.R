@@ -969,6 +969,10 @@ make_posthoc_plots = function(samplename, logr_file, bafsegmented_file, logrsegm
 #' This function will also update the Battenberg genome-wide profile plots (average.png and subclones.png) to include the chrX profile by also
 #' reading in the samplename.BAFsegmented.txt and samplename_rho_psi.txt files
 #' @param tumourname The sample name used for Battenberg (i.e. the tumour BAM file name without the .bam extension)
+#' @param logR_file The (corrected) LogR file (Default paste0(tumourname,"_mutantLogR_gcCorrected.tab"))
+#' @param BAFsegmented_file The BAFsegmented file (Default paste0(tumourname,".BAFsegmented.txt"))
+#' @param rhoandpsi_file The rho_and_psi file (Default paste0(tumourname,"_rho_and_psi.txt"))
+#' @param copynumber_file The extended copynumber file (Default paste0(tumourname,"_copynumber_extended.txt"))
 #' @param X_gamma The PCF gamma value for segmentation of 1000G SNP LogR values (Default 1000)
 #' @param X_kmin The min number of SNPs to support a segment in PCF of LogR values (Default 100)
 #' @param genomebuild The genome build used in running Battenberg (hg19 or hg38)
@@ -978,7 +982,7 @@ make_posthoc_plots = function(samplename, logr_file, bafsegmented_file, logrsegm
 #' @author naser.ansari-pour
 #' @export
 
-callChrXsubclones = function(tumourname,X_gamma=1000,X_kmin=100,genomebuild,AR=TRUE,prior_breakpoints_file=NULL,chrom_names){
+callChrXsubclones = function(tumourname,logR_file=paste0(tumourname,"_mutantLogR_gcCorrected.tab"),BAFsegmented_file=paste0(tumourname,".BAFsegmented.txt"),rhoandpsi_file=paste0(tumourname,"_rho_and_psi.txt"),copynumber_file=paste0(tumourname,"_copynumber_extended.txt"),X_gamma=1000,X_kmin=100,genomebuild,AR=TRUE,prior_breakpoints_file=NULL,chrom_names){
   
   print(tumourname)
   
@@ -994,7 +998,7 @@ callChrXsubclones = function(tumourname,X_gamma=1000,X_kmin=100,genomebuild,AR=T
     stop("Genomebuild not supported for callChrXsubclones")
   }
   
-  PCFinput=data.frame(read_table_generic(paste0(tumourname,"_mutantLogR_gcCorrected.tab")),stringsAsFactors=F)
+  PCFinput=data.frame(read_table_generic(logR_file),stringsAsFactors=F)
   ChrNotation=unique(PCFinput[which(!is.na(match(PCFinput$Chromosome,c("X","chrX")))),]$Chromosome) # find the chromosome notation
   PCFinput=PCFinput[which(PCFinput$Chromosome==ChrNotation & PCFinput$Position>par_regions[1] & PCFinput$Position<par_regions[2]),] # get nonPAR using par_regions based on genomebuild
   colnames(PCFinput)[3]=tumourname
@@ -1013,12 +1017,12 @@ callChrXsubclones = function(tumourname,X_gamma=1000,X_kmin=100,genomebuild,AR=T
       PCFinput_sv=PCFinput[which(PCFinput$Position>=breakpoints[j] & PCFinput$Position<breakpoints[j+1]),]
       # in case there is no SNP between two SVs on chrX
       if (nrow(PCFinput_sv)==0) next
-      PCF_sv=copynumber::pcf(PCFinput_sv,gamma=X_gamma,kmin=X_kmin)
+      PCF_sv=copynumber::pcf(PCFinput_sv,gamma=X_gamma,kmin=X_kmin,assembly=genomebuild)
       PCF=rbind(PCF,PCF_sv)
     }
   }
     } else {
-    PCF=copynumber::pcf(PCFinput,gamma=X_gamma,kmin=X_kmin)
+    PCF=copynumber::pcf(PCFinput,gamma=X_gamma,kmin=X_kmin,assembly=genomebuild)
   }
   write.table(PCF,paste0(tumourname,"_PCF_gamma_",X_gamma,"_chrX.txt"),col.names=T,row.names=F,quote=F,sep="\t")
   print("PCF segmentation done")
@@ -1027,14 +1031,14 @@ callChrXsubclones = function(tumourname,X_gamma=1000,X_kmin=100,genomebuild,AR=T
   
   # INPUT for copy number inference
   SAMPLEsegs=data.frame(PCF,stringsAsFactors=F)
-  pupl=read.table(paste0(tumourname,"_purity_ploidy.txt"),header=T,stringsAsFactors=F)
+  pupl=read.table(gsub("_extended\\.txt$", "_purity_ploidy.txt", copynumber_file),header=T,stringsAsFactors=F)
   SAMPLEpurity=pupl[,1] # SAMPLEpurity=pupl$cellularity in previous Battenberg version; change from pupl$purity to pupl[,1] for universality
   #SAMPLEwgd=ifelse(round(pupl$ploidy/2)*2==4,T,F)
   SAMPLEn=pupl$ploidy
   print(paste(SAMPLEpurity,SAMPLEn))
   
   # Estimating LogR deviation in diploid and gained regions (AUTOSOMAL)
-  BB=read.table(paste0(tumourname,"_copynumber_extended.txt"),header=T,stringsAsFactors = F)
+  BB=read.table(copynumber_file,header=T,stringsAsFactors = F)
   
   BBdip=BB[which(BB$nMaj1_A==1 & BB$nMin1_A==1 & BB$frac1_A==1),]
   # correction for LogR values
@@ -1283,7 +1287,7 @@ callChrXsubclones = function(tumourname,X_gamma=1000,X_kmin=100,genomebuild,AR=T
                                 stringsAsFactors = F)
   
   BBnew=rbind(BBnew,outputDF_for_merge)
-  write.table(BBnew,paste0(tumourname,"_copynumber.txt"),col.names = T,row.names = F,quote = F,sep="\t")
+  write.table(BBnew,gsub("_extended", "", copynumber_file),col.names = T,row.names = F,quote = F,sep="\t")
   
   BBnew_extended=BB[which(is.na(match(BB$chr,c("X","chrX")))),] # copynumber_extended.txt columns for chrX
   
@@ -1294,7 +1298,7 @@ callChrXsubclones = function(tumourname,X_gamma=1000,X_kmin=100,genomebuild,AR=T
   names(BtoFsolutions)=names(BB)[(ncol(outputDF_for_merge_extended)+1):ncol(BB)]
   
   BBnew_extended=rbind(BBnew_extended,cbind(outputDF_for_merge_extended,BtoFsolutions))
-  write.table(BBnew_extended,paste0(tumourname,"_copynumber_extended.txt"),col.names = T,row.names = F,quote = F,sep="\t")
+  write.table(BBnew_extended,copynumber_file,col.names = T,row.names = F,quote = F,sep="\t")
   
   # PLOT
   outputDF$diff=outputDF$endpos-outputDF$startpos
@@ -1331,16 +1335,16 @@ callChrXsubclones = function(tumourname,X_gamma=1000,X_kmin=100,genomebuild,AR=T
   
   # Update the genomewide Battenberg plots
   # goodness from rho_psi file (i.e. column named 'distance')
-  goodness=read.table(paste0(tumourname,"_rho_and_psi.txt"),header=T,stringsAsFactors = F,sep="\t")
+  goodness=read.table(rhoandpsi_file,header=T,stringsAsFactors = F,sep="\t")
   goodness=goodness[which(goodness$is.best=="TRUE"),"distance"]
   # rho and ploidy from purity_ploidy file
-  rho_psi=read.table(paste0(tumourname,"_purity_ploidy.txt"),header=T,stringsAsFactors = F,sep="\t")
+  rho_psi=read.table(gsub("_extended\\.txt$", "_purity_ploidy.txt", copynumber_file),header=T,stringsAsFactors = F,sep="\t")
   # update for BB3 - replace cellularity with purity
   # rho=rho_psi$cellularity
   rho=rho_psi$purity
   ploidy=rho_psi$ploidy
   # Need BAFsegment file
-  BAFvals=as.data.frame(Battenberg:::read_bafsegmented(paste0(tumourname,".BAFsegmented.txt")))
+  BAFvals=as.data.frame(Battenberg:::read_bafsegmented(BAFsegmented_file))
   BAFvals=rbind(BAFvals[which(is.na(match(BAFvals$Chromosome,c("X","chrX")))),],
                 data.frame(Chromosome="X",Position=sort(sample(1:155e6,90000,replace=F)), # 155e6: approximate length of chrX
                            BAF=sample(c(0,1),90000,replace=T),BAFphased=1,BAFseg=1)) # 90000 = typical no. of het SNPs expected based on chrX length (roughly around chr 7 and 8 average hetSNP counts) 
