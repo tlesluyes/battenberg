@@ -145,6 +145,10 @@ concatenateAlleleCountFiles = function(inputStart, inputEnd, chr_names) {
   infiles = c()
   for(chrom in chr_names) {
     filename = paste(inputStart, chrom, inputEnd, sep="")
+    # If text file does not exist, try adding .gz
+    if (!file.exists(filename)) {
+      filename = paste(inputStart, chrom, inputEnd, ".gz", sep="")
+    }
     # Only add files that exist and have data
     if(file.exists(filename) && file.info(filename)$size>0) {
       infiles = c(infiles, filename)
